@@ -1,0 +1,30 @@
+version: "3.9"
+services:
+  auto:
+    build: docker
+    user: "1000:1000"
+    volumes:
+      - venv:/webui/venv
+      - repo:/webui/repositories
+      - ./sd_webui_data:/webui/data
+      - ./sd_webui_output:/webui/outputs
+    command: |
+      --data-dir=/webui/data
+      --listen
+      --enable-insecure-extension-access
+      --xformers
+      --no-half-vae
+      --no-hashing
+    ports:
+      - "7860:7860"
+    tty: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+volumes:
+  venv:
+  repo:
