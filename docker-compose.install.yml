@@ -1,8 +1,0 @@
-services:
-  auto:
-    entrypoint: ["bash", "/install.sh"]
-    command: |
-      --data-dir=/webui/data
-      --exit
-      --skip-torch-cuda-test
-      --xformers

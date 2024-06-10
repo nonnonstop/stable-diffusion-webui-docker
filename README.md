@@ -9,13 +9,23 @@ Tested on Ubuntu 22.04 on WSL2.
 
 ## Installation
 
-1. Build image
+1. Create docker-compose.override.yml for overriding settings
 
-       docker compose -f docker-compose.yml -f docker-compose.install.yml build --build-arg WEBUI_BRANCH=master
+   ```yaml
+   services:
+     nvidia:
+       build:
+         args:
+           UID: "1000"
+       user: "1000:1000"
+       volumes:
+         - /mnt/c/sd_webui_data:/webui/repo/data
+         - /mnt/c/sd_webui_output:/webui/repo/outputs
+   ```
 
-2. Install dependencies
+2. Build image
 
-       docker compose -f docker-compose.yml -f docker-compose.install.yml up
+       docker compose build --build-arg WEBUI_BRANCH=master
 
 ## Usage
 

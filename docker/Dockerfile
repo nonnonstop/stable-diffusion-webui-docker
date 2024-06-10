@@ -1,37 +1,52 @@
-FROM nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
 
+# Install apt packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    wget git python3 python3-venv \
+    wget git python3.10 python3.10-venv \
     libgl1 libglib2.0-0 \
     libgoogle-perftools-dev \
-    vim \
+    bc \
     && \
     rm -rf /var/lib/apt/lists/*
-ENV LD_PRELOAD=libtcmalloc.so
 
-ARG UID=1000
-ARG GID=1000
-RUN groupadd -g ${GID} webui && \
-    useradd -m -s /bin/bash -u ${UID} -g ${GID} webui
-
+# Setup user
+ARG UID=0
+ARG GID=${UID}
+RUN (if [ ${GID} -ne 0 ] ; then groupadd -g ${GID} webui ; fi) && \
+    (if [ ${UID} -ne 0 ] ; then useradd -l -m -s /bin/bash -u ${UID} -g ${GID} webui ; fi)
 RUN mkdir -p /webui && \
-    chown webui:webui /webui
-USER webui
+    chown ${UID}:${GID} -R /webui
+USER ${UID}:${GID}
 
-ARG WEBUI_REPO=https://github.com/AUTOMATIC1111/stable-diffusion-webui.git
-RUN git clone ${WEBUI_REPO} /webui
-WORKDIR /webui
+# Setup venv and pip cache
+RUN python3 -m venv /webui/venv && \
+    mkdir -p /webui/cache/pip
+ENV PIP_CACHE_DIR=/webui/cache/pip
 
-ARG WEBUI_BRANCH=master
-RUN git fetch && \
-    git checkout ${WEBUI_BRANCH} && \
-    mkdir -p venv data repositories
+# Check update
+ARG REPO=AUTOMATIC1111/stable-diffusion-webui
+ARG BRANCH=master
+ARG COMMIT=${BRANCH}
+ADD --chown=${UID}:${GID} \
+    https://api.github.com/repos/${REPO}/git/refs/heads/${BRANCH} \
+    /webui/version.json
 
-VOLUME /webui/venv
-VOLUME /webui/data
-VOLUME /webui/repositories
-COPY install.sh /install.sh
-COPY entrypoint.sh /entrypoint.sh
-ENTRYPOINT [ "bash", "/entrypoint.sh" ]
-STOPSIGNAL SIGINT
+# Setup webui
+RUN --mount=type=cache,uid=${UID},gid=${GID},target=/webui/cache/pip \
+    rm -f /webui/version.json && \
+    # Clone repo
+    git clone https://github.com/${REPO}.git /webui/repo && \
+    cd /webui/repo && \
+    git checkout ${COMMIT} && \
+    # Install dependencies
+    . /webui/venv/bin/activate && \
+    pip install --cache-dir=/webui/cache/pip -U pip wheel && \
+    python ./launch.py --exit --skip-torch-cuda-test && \
+    mkdir -p /webui/repo/data /webui/repo/outputs && \
+    # Fix: data-dir owner mismatch
+    git config --global --add safe.directory '*'
+
+WORKDIR /webui/repo
+COPY --chown=${UID}:${GID} entrypoint.sh /webui/entrypoint.sh
+ENTRYPOINT [ "bash", "/webui/entrypoint.sh" ]

@@ -1,30 +1,33 @@
-version: "3.9"
+name: automatic-sd-webui
 services:
-  auto:
-    build: docker
-    user: "1000:1000"
+  nvidia:
+    build:
+      context: docker
+      args:
+        UID: "0"
+        COMMIT: "master"
+    user: "0:0"
     volumes:
-      - venv:/webui/venv
-      - repo:/webui/repositories
-      - ./sd_webui_data:/webui/data
-      - ./sd_webui_output:/webui/outputs
+      - ./sd_webui_data:/webui/repo/data
+      - ./sd_webui_output:/webui/repo/outputs
     command: |
-      --data-dir=/webui/data
+      --data-dir=/webui/repo/data
+      --gradio-allowed-path=/webui/repo/data
       --listen
       --enable-insecure-extension-access
       --xformers
-      --no-half-vae
-      --no-hashing
+      --medvram
     ports:
       - "7860:7860"
+    tmpfs:
+      - /tmp:exec
+    stdin_open: true
     tty: true
+    init: true
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
               count: all
-              capabilities: [gpu]
-volumes:
-  venv:
-  repo:
+              capabilities: [ compute, utility ]
