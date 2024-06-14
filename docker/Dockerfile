@@ -19,34 +19,21 @@ RUN mkdir -p /webui && \
     chown ${UID}:${GID} -R /webui
 USER ${UID}:${GID}
 
-# Setup venv and pip cache
-RUN python3 -m venv /webui/venv && \
-    mkdir -p /webui/cache/pip
-ENV PIP_CACHE_DIR=/webui/cache/pip
-
 # Check update
 ARG REPO=AUTOMATIC1111/stable-diffusion-webui
-ARG BRANCH=master
-ARG COMMIT=${BRANCH}
-ADD --chown=${UID}:${GID} \
-    https://api.github.com/repos/${REPO}/git/refs/heads/${BRANCH} \
-    /webui/version.json
+ARG COMMIT=master
 
 # Setup webui
-RUN --mount=type=cache,uid=${UID},gid=${GID},target=/webui/cache/pip \
-    rm -f /webui/version.json && \
-    # Clone repo
-    git clone https://github.com/${REPO}.git /webui/repo && \
+RUN git clone "https://github.com/${REPO}.git" /webui/repo && \
     cd /webui/repo && \
-    git checkout ${COMMIT} && \
-    # Install dependencies
-    . /webui/venv/bin/activate && \
-    pip install --cache-dir=/webui/cache/pip -U pip wheel && \
-    python ./launch.py --exit --skip-torch-cuda-test && \
-    mkdir -p /webui/repo/data /webui/repo/outputs && \
+    git checkout "${COMMIT}" && \
+    mkdir -p /webui/repo/data /webui/repo/outputs /webui/venv /webui/cache /webui/repo/repositories && \
     # Fix: data-dir owner mismatch
     git config --global --add safe.directory '*'
 
+ENV PIP_CACHE_DIR=/webui/cache/pip
+ENV HF_HOME=/webui/cache/huggingface
+VOLUME [ "/webui/venv", "/webui/cache", "/webui/repo/repositories" ]
 WORKDIR /webui/repo
 COPY --chown=${UID}:${GID} entrypoint.sh /webui/entrypoint.sh
 ENTRYPOINT [ "bash", "/webui/entrypoint.sh" ]

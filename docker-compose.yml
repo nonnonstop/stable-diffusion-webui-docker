@@ -8,6 +8,9 @@ services:
         COMMIT: "master"
     user: "0:0"
     volumes:
+      - venv:/webui/venv
+      - cache:/webui/cache
+      - repositories:/webui/repo/repositories
       - ./sd_webui_data:/webui/repo/data
       - ./sd_webui_output:/webui/repo/outputs
     command: |
@@ -31,3 +34,7 @@ services:
             - driver: nvidia
               count: all
               capabilities: [ compute, utility ]
+volumes:
+  venv:
+  cache:
+  repositories:

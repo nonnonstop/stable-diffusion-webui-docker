@@ -25,7 +25,7 @@ Tested on Ubuntu 22.04 on WSL2.
 
 2. Build image
 
-       docker compose build --build-arg BRANCH=master
+       docker compose build --build-arg COMMIT=master
 
 ## Usage
 
